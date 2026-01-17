@@ -5,12 +5,16 @@ struct AppTheme {
         static let primary = SwiftUI.Color(hex: "2D7A7B")
         static let backgroundLight = SwiftUI.Color(hex: "FAFAF9")
         static let backgroundDark = SwiftUI.Color(hex: "1A1A1A")
-        static let stone500 = SwiftUI.Color(hex: "78716c")
-        static let stone400 = SwiftUI.Color(hex: "a8a29e")
-        static let stone300 = SwiftUI.Color(hex: "d6d3d1")
+        static let stone50 = SwiftUI.Color(hex: "fafaf9")
+        static let stone100 = SwiftUI.Color(hex: "f5f5f4")
         static let stone200 = SwiftUI.Color(hex: "e7e5e4")
-        static let stone800 = SwiftUI.Color(hex: "292524")
+        static let stone300 = SwiftUI.Color(hex: "d6d3d1")
+        static let stone400 = SwiftUI.Color(hex: "a8a29e")
+        static let stone500 = SwiftUI.Color(hex: "78716c")
         static let stone600 = SwiftUI.Color(hex: "57534e")
+        static let stone700 = SwiftUI.Color(hex: "44403c")
+        static let stone800 = SwiftUI.Color(hex: "292524")
+        static let stone900 = SwiftUI.Color(hex: "1c1917")
     }
     
     struct Font {

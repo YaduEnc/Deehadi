@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LoginView: View {
     @Environment(\.dismiss) var dismiss
+    @StateObject var authService = AuthService()
     @State private var email = ""
     @State private var password = ""
     @State private var isPasswordVisible = false
@@ -77,6 +78,9 @@ struct LoginView: View {
                                 .font(AppTheme.Font.display(size: 14, weight: .bold))
                             
                             TextField("Enter your email", text: $email)
+                                .textInputAutocapitalization(.never)
+                                .keyboardType(.emailAddress)
+                                .autocorrectionDisabled(true)
                                 .padding()
                                 .background(Color.white)
                                 .cornerRadius(16)
@@ -127,21 +131,27 @@ struct LoginView: View {
             
             // Footer Action
             VStack(spacing: 24) {
-                HStack {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 12))
-                    Text("SECURE 256-BIT ENCRYPTION")
-                        .font(AppTheme.Font.display(size: 10, weight: .bold))
+                if let error = authService.error {
+                    Text(error)
+                        .font(AppTheme.Font.display(size: 12))
+                        .foregroundColor(.red)
+                        .multilineTextAlignment(.center)
                 }
-                .foregroundColor(AppTheme.Color.stone400)
-                
+
                 Button(action: {
-                    // Continue Login
+                    Task {
+                        await authService.signIn(email: email, password: password)
+                    }
                 }) {
                     HStack {
-                        Text("Continue")
-                            .font(AppTheme.Font.display(size: 18, weight: .bold))
-                        Image(systemName: "arrow.right")
+                        if authService.isLoading {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Text("Continue")
+                                .font(AppTheme.Font.display(size: 18, weight: .bold))
+                            Image(systemName: "arrow.right")
+                        }
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
@@ -149,6 +159,7 @@ struct LoginView: View {
                     .foregroundColor(.white)
                     .cornerRadius(20)
                 }
+                .disabled(authService.isLoading || email.isEmpty || password.isEmpty)
                 
                 HStack(spacing: 4) {
                     Text("Don’t have an account?")

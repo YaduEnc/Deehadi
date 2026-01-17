@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SignupView: View {
     @Environment(\.dismiss) var dismiss
+    @StateObject var authService = AuthService()
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
@@ -10,6 +11,7 @@ struct SignupView: View {
     
     var body: some View {
         VStack(spacing: 0) {
+            // ... (rest of header)
             // Header
             HStack {
                 Button(action: {
@@ -65,6 +67,9 @@ struct SignupView: View {
                                 Image(systemName: "envelope.fill")
                                     .foregroundColor(AppTheme.Color.stone400)
                                 TextField("name@example.com", text: $email)
+                                    .textInputAutocapitalization(.never)
+                                    .keyboardType(.emailAddress)
+                                    .autocorrectionDisabled(true)
                                 if !email.isEmpty && email.contains("@") {
                                     Image(systemName: "checkmark.circle.fill")
                                         .foregroundColor(AppTheme.Color.primary)
@@ -146,13 +151,31 @@ struct SignupView: View {
             
             // Footer Action
             VStack(spacing: 24) {
+                if let error = authService.error {
+                    Text(error)
+                        .font(AppTheme.Font.display(size: 12))
+                        .foregroundColor(.red)
+                        .multilineTextAlignment(.center)
+                }
+
                 Button(action: {
-                    // Create Account Action
+                    guard password == confirmPassword else {
+                        authService.error = "Passwords do not match"
+                        return
+                    }
+                    Task {
+                        await authService.signUp(email: email, password: password)
+                    }
                 }) {
                     HStack {
-                        Text("Create account")
-                            .font(AppTheme.Font.display(size: 18, weight: .bold))
-                        Image(systemName: "arrow.right")
+                        if authService.isLoading {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Text("Create account")
+                                .font(AppTheme.Font.display(size: 18, weight: .bold))
+                            Image(systemName: "arrow.right")
+                        }
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
@@ -160,6 +183,7 @@ struct SignupView: View {
                     .foregroundColor(.white)
                     .cornerRadius(20)
                 }
+                .disabled(authService.isLoading || email.isEmpty || password.isEmpty)
                 
                 HStack(spacing: 4) {
                     Text("Already have an account?")

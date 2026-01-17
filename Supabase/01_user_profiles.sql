@@ -8,6 +8,9 @@ create table public.user_profiles (
   city text,
   state text,
   pincode text,
+  phone_number text,
+  is_owner boolean default false,
+  onboarding_completed boolean default false,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -37,8 +40,8 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
-  insert into public.user_profiles (id, full_name)
-  values (new.id, new.raw_user_meta_data ->> 'full_name');
+  insert into public.user_profiles (id, full_name, onboarding_completed)
+  values (new.id, new.raw_user_meta_data ->> 'full_name', false);
   return new;
 end;
 $$;
