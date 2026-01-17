@@ -99,13 +99,6 @@ struct WalkthroughView: View {
     }
 }
 
-struct BlurView: UIViewRepresentable {
-    var style: UIBlurEffect.Style
-    func makeUIView(context: Context) -> UIVisualEffectView {
-        UIVisualEffectView(effect: UIBlurEffect(style: style))
-    }
-    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
-}
 
 struct Step1View: View {
     var next: () -> Void
@@ -549,20 +542,6 @@ struct TagView: View {
     }
 }
 
-extension View {
-    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
-        clipShape(RoundedCorner(radius: radius, corners: corners))
-    }
-}
-
-struct RoundedCorner: Shape {
-    var radius: CGFloat = .infinity
-    var corners: UIRectCorner = .allCorners
-    func path(in rect: CGRect) -> Path {
-        let path = UIBezierPath(roundedRect: rect, byRoundingCorners: corners, cornerRadii: CGSize(width: radius, height: radius))
-        return Path(path.cgPath)
-    }
-}
 struct OnboardingFlowView_Previews: PreviewProvider {
     static var previews: some View {
         OnboardingFlowView()

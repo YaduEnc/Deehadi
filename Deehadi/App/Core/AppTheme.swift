@@ -15,6 +15,9 @@ struct AppTheme {
         static let stone700 = SwiftUI.Color(hex: "44403c")
         static let stone800 = SwiftUI.Color(hex: "292524")
         static let stone900 = SwiftUI.Color(hex: "1c1917")
+        
+        static let textPrimary = stone900
+        static let background = backgroundLight
     }
     
     struct Font {

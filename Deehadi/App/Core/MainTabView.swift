@@ -1,19 +1,19 @@
 import SwiftUI
 import Auth
 struct MainTabView: View {
+    @State private var selectedTab = 0
+    
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             // Home
-            NavigationStack {
-                VStack {
-                    Text("Home / Search")
-                        .font(AppTheme.Font.display(size: 24, weight: .bold))
+            HomeView()
+                .tabItem {
+                    VStack {
+                        Image(systemName: selectedTab == 0 ? "house.fill" : "house")
+                        Text("Home")
+                    }
                 }
-                .navigationTitle("Explore")
-            }
-            .tabItem {
-                Label("Explore", systemImage: "magnifyingglass")
-            }
+                .tag(0)
             
             // Bookings
             NavigationStack {
@@ -21,19 +21,37 @@ struct MainTabView: View {
                     Text("Your Bookings")
                         .font(AppTheme.Font.display(size: 24, weight: .bold))
                 }
-                .navigationTitle("Trips")
+                .navigationTitle("Bookings")
             }
             .tabItem {
-                Label("Trips", systemImage: "car.fill")
+                VStack {
+                    Image(systemName: "list.bullet.rectangle.fill")
+                    Text("Bookings")
+                }
             }
+            .tag(1)
+            
+            // Host
+            HostDashboardView()
+            .tabItem {
+                VStack {
+                    Image(systemName: "key.fill")
+                    Text("Host")
+                }
+            }
+            .tag(2)
             
             // Profile
             NavigationStack {
                 ProfileView()
             }
             .tabItem {
-                Label("Profile", systemImage: "person.fill")
+                VStack {
+                    Image(systemName: selectedTab == 3 ? "person.fill" : "person")
+                    Text("Profile")
+                }
             }
+            .tag(3)
         }
         .tint(AppTheme.Color.primary)
     }
