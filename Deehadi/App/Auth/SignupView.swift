@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SignupView: View {
+    @Environment(\.dismiss) var dismiss
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
@@ -12,7 +13,7 @@ struct SignupView: View {
             // Header
             HStack {
                 Button(action: {
-                    // Back
+                    dismiss()
                 }) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 20, weight: .medium))
@@ -165,11 +166,11 @@ struct SignupView: View {
                         .font(AppTheme.Font.display(size: 14))
                         .foregroundColor(AppTheme.Color.stone600)
                     
-                    Button("Log in") {
-                        // Go to login
+                    NavigationLink(destination: LoginView().navigationBarBackButtonHidden(true)) {
+                        Text("Log in")
+                            .font(AppTheme.Font.display(size: 14, weight: .bold))
+                            .foregroundColor(AppTheme.Color.primary)
                     }
-                    .font(AppTheme.Font.display(size: 14, weight: .bold))
-                    .foregroundColor(AppTheme.Color.primary)
                 }
             }
             .padding(.horizontal, 24)
