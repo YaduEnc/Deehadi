@@ -1,0 +1,338 @@
+📘 PRODUCT REQUIREMENTS DOCUMENT (PRD)
+Peer-to-Peer Self-Drive Car Rental Platform (India)
+1. PRODUCT OVERVIEW
+1.1 Product Name (Working)
+
+Self-Drive Car Rental Marketplace (name TBD)
+
+1.2 Problem Statement
+
+Car owners have underutilized vehicles and fear damage, misuse, and liability.
+Renters need short-term access to cars but face high prices, poor availability, or trust issues.
+
+1.3 Solution
+
+A marketplace that allows car owners to list their vehicles and renters to book them for 1–7 days, with trip-based insurance included, strict verification, deposits, and platform-managed dispute handling.
+
+2. PRODUCT GOALS
+Primary Goals
+
+Enable safe peer-to-peer car rentals
+
+Protect car owners from financial and legal risk
+
+Provide renters a smooth, transparent booking experience
+
+Success Metrics (MVP)
+
+≥80% successful trips without disputes
+
+<10% owner cancellations
+
+<5% damage disputes per 100 bookings
+
+Repeat renters ≥30%
+
+3. TARGET USERS
+3.1 Renters
+
+Age: 21+
+
+Need short-term self-drive cars
+
+Willing to pay deposit
+
+Value safety and transparency
+
+3.2 Car Owners
+
+Individual car owners
+
+Cars idle most days
+
+Risk-averse, insurance-focused
+
+Expect platform to manage issues
+
+4. PRODUCT SCOPE
+In Scope (MVP)
+
+One city
+
+Self-drive only
+
+Hatchback + sedan cars
+
+Trip-based insurance via Acko
+
+Manual verification & disputes
+
+Out of Scope (MVP)
+
+Chauffeur rentals
+
+Luxury cars
+
+Subscription plans
+
+Cross-city drop
+
+5. USER FLOWS
+5.1 Renter Flow
+
+Sign up → KYC → approval
+
+Search car → select dates
+
+View final price (insurance included)
+
+Pay full amount + deposit
+
+Pickup → upload proof
+
+Use car
+
+Return → upload proof
+
+Deposit refund / adjustment
+
+5.2 Owner Flow
+
+Sign up → verification
+
+List car → admin approval
+
+Accept booking automatically
+
+Handover car
+
+Receive car back
+
+Get paid after trip close
+
+6. FEATURE REQUIREMENTS
+6.1 Authentication & Profiles
+
+OTP-based login
+
+Single account per device
+
+Profile with role (renter/owner)
+
+Account status control (admin)
+
+6.2 KYC & Verification
+
+Renter
+
+Driving license upload (front/back)
+
+Age check (21+)
+
+Manual admin approval
+
+Owner
+
+Identity proof
+
+Bank account details
+
+Ownership declaration
+
+6.3 Car Listing
+
+Car details (model, year, fuel, transmission)
+
+Registration number
+
+Location
+
+Pricing (1 / 3 / 7 days)
+
+Availability calendar
+
+Rules (no smoking, city limit)
+
+6.4 Search & Discovery
+
+Location-based search
+
+Date & duration filter
+
+Price, car type, transmission filters
+
+Sort by price & rating
+
+6.5 Booking & Pricing
+
+Full upfront payment
+
+Refundable security deposit
+
+Single final price shown
+
+Static text: “Insurance & protection included”
+
+Clear renter liability cap displayed
+
+6.6 Payments & Escrow
+
+Deposit held separately
+
+Owner payout only after trip completion
+
+Late fees auto-calculated
+
+Partial deposit deductions supported
+
+6.7 Insurance (Acko)
+
+Trip-based policy per booking
+
+Coverage window = pickup → drop
+
+Manual policy creation (MVP)
+
+Policy PDF stored & accessible
+
+Claim initiation via admin panel
+
+6.8 Pickup & Return Proof (Mandatory)
+
+Pre-Trip
+
+Timestamped photos (all sides, interior)
+
+Fuel & odometer photo
+
+Short video
+
+Post-Trip
+
+Same photo/video set
+
+Cleanliness confirmation
+
+Trip cannot be closed without this.
+
+6.9 Damage & Disputes
+
+Damage categories: minor / major / total loss
+
+Minor → deposit deduction
+
+Major → insurance + excess
+
+Admin review with evidence
+
+Admin decision final
+
+6.10 Late Returns
+
+Grace period (15–30 mins)
+
+Hourly late charges
+
+Auto deduction from deposit
+
+6.11 Fines & Challans
+
+Challan linked to booking
+
+Forwarded to renter
+
+Deposit held till resolved
+
+6.12 Ratings & Trust
+
+Mutual ratings
+
+Low rating auto-flags
+
+Repeat offender bans
+
+6.13 Support & Emergency
+
+Booking-linked support tickets
+
+Emergency flow:
+
+Call police
+
+Call insurer
+
+Call platform
+
+Instant access to insurance policy
+
+7. ADMIN PANEL REQUIREMENTS
+
+User & KYC approval
+
+Car listing approval
+
+Booking override
+
+Deposit adjustment
+
+Damage decision
+
+Insurance claim initiation
+
+Owner payout control
+
+User ban/suspend
+
+City management
+
+Analytics dashboard
+
+8. NON-FUNCTIONAL REQUIREMENTS
+
+Secure media storage (photos/videos)
+
+Audit logs for disputes
+
+Role-based access control
+
+Scalable backend (city-wise)
+
+9. LEGAL & COMPLIANCE
+
+Mandatory T&C acceptance
+
+Marketplace disclaimer
+
+Liability caps visible
+
+Digital rental agreement
+
+Consent logs stored
+
+10. PHASED ROADMAP
+Phase 1 (MVP)
+
+One city
+
+Manual insurance
+
+Manual ops
+
+Limited cars
+
+Phase 2
+
+Insurance APIs
+
+GPS tracking
+
+Multi-city expansion
+
+Automation
+
+11. RISKS & MITIGATION
+Risk	Mitigation
+Owner mistrust	Insurance + escrow
+Renter misuse	Deposit + bans
+Disputes	Mandatory proof
+Legal issues	Clear T&C

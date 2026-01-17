@@ -1,0 +1,313 @@
+# DATABASE SCHEMA — PEER-TO-PEER SELF-DRIVE CAR RENTAL PLATFORM
+
+> Designed for scalability, auditability, insurance integration, GPS, multi-city expansion, and future monetization.
+
+---
+
+## GLOBAL DESIGN RULES
+- Database: PostgreSQL
+- Primary Keys: UUID
+- Soft delete everywhere (`deleted_at`)
+- All money stored in smallest unit (paise)
+- Timezone: UTC
+- No hard coupling (insurance, GPS, pricing are pluggable)
+
+---
+
+## 1. USERS & AUTH
+
+### users
+- id (uuid, pk)
+- phone (unique)
+- email (unique, nullable)
+- role (renter | owner | both)
+- status (active | suspended | banned)
+- created_at
+- updated_at
+- deleted_at
+
+### user_profiles
+- id (uuid, pk)
+- user_id (fk → users.id)
+- full_name
+- dob
+- profile_photo_url
+- address
+- city
+- state
+- pincode
+- created_at
+- updated_at
+
+### user_devices
+- id (uuid, pk)
+- user_id (fk)
+- device_id
+- device_type
+- last_login_at
+
+---
+
+## 2. KYC & VERIFICATION
+
+### kyc_records
+- id (uuid, pk)
+- user_id (fk)
+- document_type (driving_license | aadhaar | pan)
+- document_number
+- front_image_url
+- back_image_url
+- expiry_date
+- status (pending | approved | rejected)
+- verified_by_admin_id
+- created_at
+- updated_at
+
+---
+
+## 3. OWNER FINANCIALS
+
+### bank_accounts
+- id (uuid, pk)
+- user_id (fk)
+- account_holder_name
+- account_number
+- ifsc
+- bank_name
+- is_primary
+- created_at
+
+---
+
+## 4. CARS
+
+### cars
+- id (uuid, pk)
+- owner_id (fk → users.id)
+- registration_number (unique)
+- brand
+- model
+- year
+- fuel_type
+- transmission
+- seats
+- city
+- pickup_lat
+- pickup_lng
+- status (active | inactive | suspended)
+- created_at
+- updated_at
+- deleted_at
+
+### car_media
+- id (uuid, pk)
+- car_id (fk)
+- media_type (image | video)
+- url
+- position
+- created_at
+
+### car_rules
+- id (uuid, pk)
+- car_id (fk)
+- no_smoking (bool)
+- city_limit_km
+- allowed_outstation (bool)
+- cleaning_fee
+- smoking_penalty
+- late_fee_per_hour
+
+### car_availability
+- id (uuid, pk)
+- car_id (fk)
+- start_date
+- end_date
+- is_available
+
+---
+
+## 5. PRICING (EXTENSIBLE)
+
+### pricing_plans
+- id (uuid, pk)
+- car_id (fk)
+- duration_type (day | week)
+- duration_value
+- price
+- created_at
+
+---
+
+## 6. BOOKINGS
+
+### bookings
+- id (uuid, pk)
+- car_id (fk)
+- renter_id (fk → users.id)
+- start_time
+- end_time
+- status (pending | active | completed | cancelled | disputed)
+- total_amount
+- security_deposit
+- late_fee
+- created_at
+- updated_at
+
+---
+
+## 7. PAYMENTS & ESCROW
+
+### payments
+- id (uuid, pk)
+- booking_id (fk)
+- user_id (fk)
+- amount
+- type (rental | deposit | penalty | refund)
+- status (initiated | success | failed)
+- payment_gateway_ref
+- created_at
+
+### payouts
+- id (uuid, pk)
+- booking_id (fk)
+- owner_id (fk)
+- amount
+- status (pending | released | held)
+- released_at
+
+---
+
+## 8. INSURANCE (MULTI-PROVIDER READY)
+
+### insurance_policies
+- id (uuid, pk)
+- booking_id (fk)
+- provider_name
+- policy_number
+- policy_document_url
+- coverage_start
+- coverage_end
+- status (active | claimed | expired)
+- created_at
+
+### insurance_claims
+- id (uuid, pk)
+- insurance_policy_id (fk)
+- claim_reason
+- claim_amount
+- status (initiated | approved | rejected | paid)
+- created_at
+- updated_at
+
+---
+
+## 9. PICKUP & RETURN PROOFS
+
+### trip_proofs
+- id (uuid, pk)
+- booking_id (fk)
+- proof_type (pre_trip | post_trip)
+- fuel_level
+- odometer_reading
+- created_at
+
+### trip_proof_media
+- id (uuid, pk)
+- trip_proof_id (fk)
+- media_type (image | video)
+- url
+
+---
+
+## 10. DAMAGE & DISPUTES
+
+### damages
+- id (uuid, pk)
+- booking_id (fk)
+- damage_type (minor | major | total_loss)
+- description
+- estimated_cost
+- resolved_amount
+- created_at
+
+### disputes
+- id (uuid, pk)
+- booking_id (fk)
+- raised_by (renter | owner)
+- reason
+- status (open | resolved | rejected)
+- resolved_by_admin_id
+- created_at
+- resolved_at
+
+---
+
+## 11. FINES & CHALLANS
+
+### challans
+- id (uuid, pk)
+- booking_id (fk)
+- challan_number
+- amount
+- status (pending | paid)
+- document_url
+- created_at
+
+---
+
+## 12. RATINGS & TRUST
+
+### ratings
+- id (uuid, pk)
+- booking_id (fk)
+- rated_by
+- rated_to
+- rating (1–5)
+- comment
+- created_at
+
+---
+
+## 13. SUPPORT & INCIDENTS
+
+### support_tickets
+- id (uuid, pk)
+- booking_id (fk)
+- user_id (fk)
+- category (accident | payment | damage | other)
+- message
+- status (open | in_progress | closed)
+- created_at
+- closed_at
+
+---
+
+## 14. ADMIN & AUDIT
+
+### admins
+- id (uuid, pk)
+- name
+- role
+- created_at
+
+### audit_logs
+- id (uuid, pk)
+- entity_type
+- entity_id
+- action
+- performed_by
+- created_at
+
+---
+
+## 15. FUTURE MODULES (RESERVED)
+- gps_tracking
+- subscriptions
+- dynamic_pricing
+- risk_scoring
+- loyalty_programs
+- multi_insurance_support
+
+---
+
+## END OF SCHEMA
