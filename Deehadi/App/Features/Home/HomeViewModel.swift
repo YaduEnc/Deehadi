@@ -16,9 +16,18 @@ class HomeViewModel: ObservableObject {
         error = nil
         
         do {
-            let fetchedCars: [Car] = try await SupabaseManager.shared.client
+            var query = SupabaseManager.shared.client
                 .from("cars")
-                .select()
+                .select("*, car_media(*), pricing_plans(*)")
+                .eq("status", value: "active")
+            
+            // Apply category filter if needed (simple implementation based on fuel_type for now)
+            if selectedCategory == "Electric" {
+                query = query.ilike("fuel_type", value: "electric")
+            }
+            
+            let fetchedCars: [Car] = try await query
+                .order("created_at", ascending: false)
                 .execute()
                 .value
             

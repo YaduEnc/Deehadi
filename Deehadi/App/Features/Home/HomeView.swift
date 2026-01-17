@@ -135,6 +135,9 @@ struct HomeView: View {
                         isSelected: viewModel.selectedCategory == category
                     ) {
                         viewModel.selectedCategory = category
+                        Task {
+                            await viewModel.fetchCars()
+                        }
                     }
                 }
             }
@@ -144,20 +147,22 @@ struct HomeView: View {
     
     private var carListSection: some View {
         VStack(spacing: 24) {
-            ForEach(viewModel.cars) { car in
-                CarCard(car: car)
-            }
-            
-            // For Demo/Preview if DB is empty
-            if viewModel.cars.isEmpty {
-                NavigationLink(destination: CarDetailView(car: previewCar(brand: "BMW", model: "5 Series", year: 2023, price: 145))) {
-                    CarCard(car: previewCar(brand: "BMW", model: "5 Series", year: 2023, price: 145))
+            if viewModel.cars.isEmpty && !viewModel.isLoading {
+                VStack(spacing: 12) {
+                    Image(systemName: "car.side.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(AppTheme.Color.stone200)
+                    Text("No cars available in this area")
+                        .font(AppTheme.Font.display(size: 16, weight: .medium))
+                        .foregroundColor(AppTheme.Color.stone500)
                 }
-                NavigationLink(destination: CarDetailView(car: previewCar(brand: "Tesla", model: "Model 3", year: 2023, price: 119, isElectric: true))) {
-                    CarCard(car: previewCar(brand: "Tesla", model: "Model 3", year: 2023, price: 119, isElectric: true))
-                }
-                NavigationLink(destination: CarDetailView(car: previewCar(brand: "Porsche", model: "911 Carrera", year: 2022, price: 280))) {
-                    CarCard(car: previewCar(brand: "Porsche", model: "911 Carrera", year: 2022, price: 280))
+                .padding(.top, 40)
+            } else {
+                ForEach(viewModel.cars) { car in
+                    NavigationLink(destination: CarDetailView(car: car)) {
+                        CarCard(car: car)
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
         }
@@ -173,25 +178,6 @@ struct HomeView: View {
         case "Luxury": return "crown.fill"
         default: return "car"
         }
-    }
-    
-    private func previewCar(brand: String, model: String, year: Int, price: Int, isElectric: Bool = false) -> Car {
-        Car(
-            id: UUID(),
-            owner_id: UUID(),
-            registration_number: "ABC-123",
-            brand: brand,
-            model: model,
-            year: year,
-            fuel_type: isElectric ? "Electric" : "Petrol",
-            transmission: "Automatic",
-            seats: 5,
-            city: "Mumbai",
-            pickup_lat: nil,
-            pickup_lng: nil,
-            status: "active",
-            created_at: Date()
-        )
     }
 }
 
@@ -271,7 +257,7 @@ struct CarCard: View {
                         Image(systemName: "star.fill")
                             .foregroundColor(.orange)
                             .font(.system(size: 12))
-                        Text(String(format: "%.1f", car.rating))
+                        Text(car.rating > 0 ? String(format: "%.1f", car.rating) : "New")
                             .font(AppTheme.Font.display(size: 14, weight: .bold))
                         Text("(\(car.tripsCount) trips)")
                             .font(AppTheme.Font.display(size: 14))
@@ -290,7 +276,7 @@ struct CarCard: View {
                             .tracking(0.5)
                         
                         HStack(alignment: .bottom, spacing: 2) {
-                            Text("$\(car.pricePerDay)")
+                            Text("₹\(car.pricePerDay)")
                                 .font(AppTheme.Font.display(size: 20, weight: .bold))
                                 .foregroundColor(AppTheme.Color.primary)
                             Text("/ day")

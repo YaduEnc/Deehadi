@@ -14,8 +14,11 @@ enum KYCStatus: String {
 class HostViewModel: ObservableObject {
     @Published var kycStatus: KYCStatus = .notSubmitted
     @Published var myCars: [Car] = []
+    @Published var incomingBookings: [Booking] = []
+    @Published var totalEarnings: Double = 0.0
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var editingCarId: UUID? = nil
     
     // KYC Form
     @Published var frontLicenseImage: UIImage?
@@ -33,6 +36,9 @@ class HostViewModel: ObservableObject {
     @Published var city: String = ""
     @Published var pricePerDay: String = ""
     @Published var carImages: [UIImage] = []
+    @Published var selectedFeatures: Set<String> = []
+    
+    let availableFeatures = ["Air Conditioning", "Bluetooth", "Music System", "GPS Navigation", "Sunroof", "ABS", "USB Charger", "Child Seat"]
     
     private let client = SupabaseManager.shared.client
     
@@ -101,18 +107,127 @@ class HostViewModel: ObservableObject {
         isLoading = true
         
         do {
-            let cars: [Car] = try await client
+            let fetchedCars: [Car] = try await client
                 .from("cars")
-                .select()
+                .select("*, car_media(*), pricing_plans(*)")
                 .eq("owner_id", value: userId)
                 .execute()
                 .value
             
-            self.myCars = cars
+            self.myCars = fetchedCars
             isLoading = false
         } catch {
             print("Error fetching cars: \(error)")
             isLoading = false
+        }
+    }
+    
+    func fetchIncomingBookings() async {
+        guard let userId = client.auth.currentUser?.id else { return }
+        isLoading = true
+        
+        do {
+            // Complex join: Get bookings where the car's owner is the current user
+            // We fetch the car and the renter profile as well
+            let fetchedBookings: [Booking] = try await client
+                .from("bookings")
+                .select("*, car:cars!inner(*, car_media(*)), renter:user_profiles!renter_id(*)")
+                .eq("cars.owner_id", value: userId)
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+            
+            self.incomingBookings = fetchedBookings
+            
+            // Calculate Total Earnings
+            // Earnings = Total Amount - Security Deposit for Active/Completed bookings
+            let earnings = fetchedBookings
+                .filter { $0.status == "active" || $0.status == "completed" }
+                .reduce(0) { $0 + ($1.total_amount - $1.security_deposit) }
+            
+            self.totalEarnings = Double(earnings)
+            isLoading = false
+        } catch {
+            print("Error fetching incoming bookings: \(error)")
+            errorMessage = "Failed to load booking requests."
+            isLoading = false
+        }
+    }
+    
+    func updateBookingStatus(bookingId: UUID, status: String) async -> Bool {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            try await client
+                .from("bookings")
+                .update(["status": status])
+                .eq("id", value: bookingId)
+                .execute()
+            
+            // Refresh list
+            await fetchIncomingBookings()
+            isLoading = false
+            return true
+        } catch {
+            print("Error updating booking: \(error)")
+            errorMessage = "Failed to update booking status."
+            isLoading = false
+            return false
+        }
+    }
+    
+    func prepareForEdit(car: Car) {
+        self.editingCarId = car.id
+        self.brand = car.brand
+        self.model = car.model
+        self.year = String(car.year)
+        self.fuelType = car.fuel_type
+        self.transmission = car.transmission
+        self.seats = car.seats
+        self.city = car.city
+        self.pricePerDay = String(car.pricePerDay)
+        self.selectedFeatures = Set(car.features ?? [])
+        self.licensePlate = car.registration_number
+        // Note: Reset images since we are editing basic info/rules mostly for now
+        self.carImages = []
+    }
+    
+    func updateCar(carId: UUID) async -> Bool {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            let update = CarInsert(
+                owner_id: client.auth.currentUser!.id,
+                registration_number: licensePlate,
+                brand: brand,
+                model: model,
+                year: Int(year) ?? 2024,
+                fuel_type: fuelType,
+                transmission: transmission,
+                seats: seats,
+                city: city,
+                status: "active",
+                features: Array(selectedFeatures)
+            )
+            
+            try await client.from("cars").update(update).eq("id", value: carId).execute()
+            
+            // Update Pricing
+            if let price = Double(pricePerDay) {
+                try await client.from("pricing_plans")
+                    .update(["price_per_day": price])
+                    .eq("car_id", value: carId)
+                    .execute()
+            }
+            
+            isLoading = false
+            return true
+        } catch {
+            errorMessage = "Failed to update car: \(error.localizedDescription)"
+            isLoading = false
+            return false
         }
     }
     
@@ -133,25 +248,33 @@ class HostViewModel: ObservableObject {
                 transmission: transmission,
                 seats: seats,
                 city: city,
-                status: "active"
+                status: "active",
+                features: Array(selectedFeatures)
             )
             
             let response: [Car] = try await client.from("cars").insert(newCar).select().execute().value
             guard let createdCar = response.first else { throw URLError(.badServerResponse) }
             
-            // 2. Upload Images & Link
-            for (index, image) in carImages.enumerated() {
-                let path = "\(createdCar.id)/\(UUID().uuidString).jpg"
-                let url = try await uploadImage(image: image, bucket: "car-images", path: path)
+            do {
+                // 2. Upload Images & Link
+                for (index, image) in carImages.enumerated() {
+                    let path = "\(createdCar.id)/\(UUID().uuidString).jpg"
+                    let url = try await uploadImage(image: image, bucket: "car-images", path: path)
+                    
+                    let media = CarMediaInsert(car_id: createdCar.id, media_type: "image", url: url, position: index)
+                    try await client.from("car_media").insert(media).execute()
+                }
                 
-                let media = CarMediaInsert(car_id: createdCar.id, media_type: "image", url: url, position: index)
-                try await client.from("car_media").insert(media).execute()
-            }
-            
-            // 3. Set Price
-            if let price = Double(pricePerDay) {
-                let pricing = PricingPlanInsert(car_id: createdCar.id, price_per_day: price, currency: "USD")
-                try await client.from("pricing_plans").insert(pricing).execute()
+                // 3. Set Price
+                if let price = Double(pricePerDay) {
+                    let pricing = PricingPlanInsert(car_id: createdCar.id, price_per_day: price, currency: "INR")
+                    try await client.from("pricing_plans").insert(pricing).execute()
+                }
+            } catch {
+                // ROLLBACK: If images or pricing fail, delete the car so we don't have a broken listing
+                print("Sub-tasks failed, rolling back car creation: \(error)")
+                try? await client.from("cars").delete().eq("id", value: createdCar.id).execute()
+                throw error // Re-throw to show error in UI
             }
             
             isLoading = false
@@ -160,7 +283,7 @@ class HostViewModel: ObservableObject {
         } catch {
             errorMessage = "Failed to add car: \(error.localizedDescription)"
             isLoading = false
-            print(error)
+            print("Car creation error: \(error)")
             return false
         }
     }
@@ -198,6 +321,7 @@ struct CarInsert: Encodable {
     var seats: Int
     var city: String
     var status: String
+    var features: [String]?
 }
 
 struct CarMediaInsert: Encodable {

@@ -24,10 +24,14 @@ class UserSession: ObservableObject {
             let session = try await SupabaseManager.shared.client.auth.session
             await MainActor.run {
                 self.session = session
-                self.isLoading = false
             }
+            
             if session != nil {
                 await fetchProfile()
+            } else {
+                await MainActor.run {
+                    self.isLoading = false
+                }
             }
         } catch {
             await MainActor.run {
@@ -37,7 +41,11 @@ class UserSession: ObservableObject {
     }
     
     func fetchProfile() async {
-        guard let userId = session?.user.id else { return }
+        guard let userId = session?.user.id else { 
+            await MainActor.run { self.isLoading = false }
+            return 
+        }
+        
         do {
             let profile: UserProfile = try await SupabaseManager.shared.client
                 .from("user_profiles")
@@ -49,9 +57,16 @@ class UserSession: ObservableObject {
             
             await MainActor.run {
                 self.profile = profile
+                self.isLoading = false
             }
         } catch {
-            print("Error fetching profile: \(error)")
+            print("Profile fetch failed: \(error.localizedDescription)")
+            // If profile is missing (406 or Not Found), the user record was likely deleted
+            // We should treat this as unauthenticated so they can sign up again
+            await signOut()
+            await MainActor.run {
+                self.isLoading = false
+            }
         }
     }
     

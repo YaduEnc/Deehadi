@@ -1,5 +1,16 @@
 import Foundation
 
+struct PricingPlan: Codable {
+    let price_per_day: Double
+    let currency: String
+}
+
+struct CarMedia: Codable {
+    let url: String
+    let media_type: String
+    let position: Int
+}
+
 struct Car: Codable, Identifiable {
     let id: UUID
     let owner_id: UUID
@@ -14,21 +25,35 @@ struct Car: Codable, Identifiable {
     let pickup_lat: Double?
     let pickup_lng: Double?
     let status: String
+    let features: [String]?
     let created_at: Date?
+    
+    // Relations from Supabase
+    let pricing_plans: [PricingPlan]?
+    let car_media: [CarMedia]?
     
     var fullName: String {
         "\(brand) \(model) \(year)"
     }
     
-    // Placeholder values for UI testing if not in DB yet
-    var rating: Double { 5.0 }
-    var tripsCount: Int { 12 }
-    var pricePerDay: Int { 145 } // This will need to come from pricing_plans table later
+    var rating: Double { 0.0 }
+    var tripsCount: Int { 0 }
+    
+    var pricePerDay: Int {
+        if let price = pricing_plans?.first?.price_per_day {
+            return Int(price)
+        }
+        return 0
+    }
+    
     var hasInsurance: Bool { true }
     var isElectric: Bool { fuel_type.lowercased() == "electric" }
     
     var imageUrl: String {
-        // Placeholder or first image from car_media
-        "https://images.unsplash.com/photo-1555215695-3004980ad54e?q=80&w=2070&auto=format&fit=crop"
+        // Use first image from car_media
+        if let firstImageUrl = car_media?.sorted(by: { $0.position < $1.position }).first?.url {
+            return firstImageUrl
+        }
+        return "" // No real photo available
     }
 }

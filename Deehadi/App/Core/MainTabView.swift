@@ -1,5 +1,7 @@
 import SwiftUI
 import Auth
+import Supabase
+import PostgREST
 struct MainTabView: View {
     @State private var selectedTab = 0
     
@@ -17,11 +19,7 @@ struct MainTabView: View {
             
             // Bookings
             NavigationStack {
-                VStack {
-                    Text("Your Bookings")
-                        .font(AppTheme.Font.display(size: 24, weight: .bold))
-                }
-                .navigationTitle("Bookings")
+                MyBookingsView()
             }
             .tabItem {
                 VStack {
@@ -59,6 +57,8 @@ struct MainTabView: View {
 
 struct ProfileView: View {
     @EnvironmentObject var session: UserSession
+    @State private var isApproving = false
+    @State private var approvalSuccess = false
     
     var body: some View {
         List {
@@ -72,6 +72,42 @@ struct ProfileView: View {
                     Task {
                         await session.signOut()
                     }
+                }
+            }
+            
+            Section("Developer Tools") {
+                Button(action: {
+                    Task {
+                        guard let userId = SupabaseManager.shared.client.auth.currentUser?.id else { return }
+                        isApproving = true
+                        do {
+                            try await SupabaseManager.shared.client
+                                .from("kyc_records")
+                                .update(["status": "approved"])
+                                .eq("user_id", value: userId)
+                                .execute()
+                            approvalSuccess = true
+                            isApproving = false
+                        } catch {
+                            print("Error approving KYC: \(error)")
+                            isApproving = false
+                        }
+                    }
+                }) {
+                    HStack {
+                        if isApproving {
+                            ProgressView().padding(.trailing, 8)
+                        }
+                        Text(approvalSuccess ? "✅ KYC Approved!" : "Simulate KYC Approval")
+                    }
+                }
+                .disabled(isApproving || approvalSuccess)
+                .foregroundColor(approvalSuccess ? .green : .blue)
+                
+                if approvalSuccess {
+                    Text("Now go to the Host tab to start listing!")
+                        .font(.caption)
+                        .foregroundColor(.gray)
                 }
             }
         }

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct KYCView: View {
-    @StateObject private var viewModel = HostViewModel()
+    @ObservedObject var viewModel: HostViewModel
     @Environment(\.dismiss) var dismiss
     
     @State private var showingImagePicker = false
@@ -11,88 +11,130 @@ struct KYCView: View {
         ZStack {
             AppTheme.Color.background.ignoresSafeArea()
             
-            VStack(spacing: 0) {
-                // Header
-                HStack {
-                    Button(action: { dismiss() }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                            Text("Back")
-                        }
-                        .font(AppTheme.Font.display(size: 16, weight: .medium))
-                        .foregroundColor(AppTheme.Color.primary)
-                    }
+            if viewModel.kycStatus == .pending {
+                // Success State
+                VStack(spacing: 24) {
                     Spacer()
-                }
-                .padding()
-                
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        Text("Verify your identity")
-                            .font(AppTheme.Font.display(size: 28, weight: .bold))
-                            .padding(.bottom, 4)
+                    
+                    Circle()
+                        .fill(Color(hex: "E8F5E9"))
+                        .frame(width: 100, height: 100)
+                        .overlay(
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 40, weight: .bold))
+                                .foregroundColor(Color(hex: "2E7D32"))
+                        )
+                    
+                    VStack(spacing: 8) {
+                        Text("Verification Pending")
+                            .font(AppTheme.Font.display(size: 24, weight: .bold))
+                            .foregroundColor(AppTheme.Color.textPrimary)
                         
-                        Text("This helps keep our community safe and ensures a secure experience for everyone.")
+                        Text("Thanks for submitting your documents. We'll review them shortly (uaually within 24h).")
                             .font(AppTheme.Font.display(size: 16))
                             .foregroundColor(AppTheme.Color.stone500)
-                            .lineSpacing(4)
-                        
-                        // Upload Cards
-                        VStack(spacing: 16) {
-                            uploadCard(title: "Driving license (front)", side: "front", image: viewModel.frontLicenseImage)
-                            uploadCard(title: "Driving license (back)", side: "back", image: viewModel.backLicenseImage)
-                        }
-                        .padding(.vertical, 12)
-                        
-                        // Why Verify Section
-                        VStack(alignment: .leading, spacing: 20) {
-                            Text("WHY WE VERIFY")
-                                .font(AppTheme.Font.display(size: 12, weight: .bold))
-                                .foregroundColor(AppTheme.Color.stone400)
-                                .tracking(1)
-                            
-                            featureRow(icon: "checkmark.shield.fill", title: "Trust & Safety", desc: "Confirming your identity helps prevent fraud and keeps the community secure.")
-                            featureRow(icon: "shield.fill", title: "Insurance Requirements", desc: "Verified drivers are necessary for comprehensive insurance coverage.")
-                            featureRow(icon: "lock.fill", title: "Data Protection", desc: "Your documents are encrypted and only used for verification purposes.")
-                        }
-                        .padding(.top, 16)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
+                    
+                    Spacer()
+                    
+                    Button(action: { dismiss() }) {
+                        Text("Go to Dashboard")
+                            .font(AppTheme.Font.display(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(Color(hex: "1F1F1F"))
+                            .cornerRadius(12)
                     }
                     .padding(24)
                 }
-                
-                // Submit Button
-                VStack {
-                    if let error = viewModel.errorMessage {
-                        Text(error)
-                            .foregroundColor(.red)
-                            .font(.caption)
-                            .padding(.bottom, 8)
+            } else {
+                // Form State
+                VStack(spacing: 0) {
+                    // Header
+                    HStack {
+                        Button(action: { dismiss() }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left")
+                                Text("Back")
+                            }
+                            .font(AppTheme.Font.display(size: 16, weight: .medium))
+                            .foregroundColor(AppTheme.Color.primary)
+                        }
+                        Spacer()
+                    }
+                    .padding()
+                    
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 24) {
+                            Text("Verify your identity")
+                                .font(AppTheme.Font.display(size: 28, weight: .bold))
+                                .padding(.bottom, 4)
+                            
+                            Text("This helps keep our community safe and ensures a secure experience for everyone.")
+                                .font(AppTheme.Font.display(size: 16))
+                                .foregroundColor(AppTheme.Color.stone500)
+                                .lineSpacing(4)
+                            
+                            // Upload Cards
+                            VStack(spacing: 16) {
+                                uploadCard(title: "Driving license (front)", side: "front", image: viewModel.frontLicenseImage)
+                                uploadCard(title: "Driving license (back)", side: "back", image: viewModel.backLicenseImage)
+                            }
+                            .padding(.vertical, 12)
+                            
+                            // Why Verify Section
+                            VStack(alignment: .leading, spacing: 20) {
+                                Text("WHY WE VERIFY")
+                                    .font(AppTheme.Font.display(size: 12, weight: .bold))
+                                    .foregroundColor(AppTheme.Color.stone400)
+                                    .tracking(1)
+                                
+                                featureRow(icon: "checkmark.shield.fill", title: "Trust & Safety", desc: "Confirming your identity helps prevent fraud and keeps the community secure.")
+                                featureRow(icon: "shield.fill", title: "Insurance Requirements", desc: "Verified drivers are necessary for comprehensive insurance coverage.")
+                                featureRow(icon: "lock.fill", title: "Data Protection", desc: "Your documents are encrypted and only used for verification purposes.")
+                            }
+                            .padding(.top, 16)
+                        }
+                        .padding(24)
                     }
                     
-                    Button(action: {
-                        Task {
-                            await viewModel.submitKYC()
+                    // Submit Button
+                    VStack {
+                        if let error = viewModel.errorMessage {
+                            Text(error)
+                                .foregroundColor(.red)
+                                .font(.caption)
+                                .padding(.bottom, 8)
                         }
-                    }) {
-                        HStack {
-                            if viewModel.isSubmittingKYC {
-                                ProgressView().tint(.white)
-                            } else {
-                                Text("Submit for verification")
+                        
+                        Button(action: {
+                            Task {
+                                await viewModel.submitKYC()
                             }
+                        }) {
+                            HStack {
+                                if viewModel.isSubmittingKYC {
+                                    ProgressView().tint(.white)
+                                } else {
+                                    Text("Submit for verification")
+                                }
+                            }
+                            .font(AppTheme.Font.display(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(Color(hex: "1F1F1F"))
+                            .cornerRadius(12)
                         }
-                        .font(AppTheme.Font.display(size: 16, weight: .bold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(Color(hex: "1F1F1F"))
-                        .cornerRadius(12)
+                        .disabled(viewModel.frontLicenseImage == nil || viewModel.backLicenseImage == nil || viewModel.isSubmittingKYC)
+                        .opacity((viewModel.frontLicenseImage == nil || viewModel.backLicenseImage == nil) ? 0.5 : 1)
                     }
-                    .disabled(viewModel.frontLicenseImage == nil || viewModel.backLicenseImage == nil || viewModel.isSubmittingKYC)
-                    .opacity((viewModel.frontLicenseImage == nil || viewModel.backLicenseImage == nil) ? 0.5 : 1)
+                    .padding(24)
+                    .background(Color.white)
                 }
-                .padding(24)
-                .background(Color.white)
             }
         }
         .sheet(isPresented: $showingImagePicker) {
@@ -172,5 +214,5 @@ struct KYCView: View {
 }
 
 #Preview {
-    KYCView()
+    KYCView(viewModel: HostViewModel())
 }

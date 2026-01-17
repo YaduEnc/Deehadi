@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AddCarView: View {
-    @StateObject private var viewModel = HostViewModel() // In real app, pass environment object from Dashboard
+    @ObservedObject var viewModel: HostViewModel
     @Environment(\.dismiss) var dismiss
     
     @State private var showingImagePicker = false
@@ -94,14 +94,49 @@ struct AddCarView: View {
                             }
                         }
                         
-                        // 4. Pricing & Rules
+                        // 4. Features
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("FEATURES")
+                                .font(AppTheme.Font.display(size: 12, weight: .bold))
+                                .foregroundColor(AppTheme.Color.stone400)
+                                .tracking(1)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(viewModel.availableFeatures, id: \.self) { feature in
+                                        let isSelected = viewModel.selectedFeatures.contains(feature)
+                                        Button(action: {
+                                            if isSelected {
+                                                viewModel.selectedFeatures.remove(feature)
+                                            } else {
+                                                viewModel.selectedFeatures.insert(feature)
+                                            }
+                                        }) {
+                                            Text(feature)
+                                                .font(AppTheme.Font.display(size: 12, weight: .bold))
+                                                .padding(.horizontal, 16)
+                                                .padding(.vertical, 8)
+                                                .background(isSelected ? Color.black : Color.white)
+                                                .foregroundColor(isSelected ? .white : Color.black)
+                                                .cornerRadius(20)
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 20)
+                                                        .stroke(AppTheme.Color.stone200, lineWidth: 1)
+                                                )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // 5. Pricing & Rules
                         VStack(alignment: .leading, spacing: 16) {
                             Text("PRICING & RULES")
                                 .font(AppTheme.Font.display(size: 12, weight: .bold))
                                 .foregroundColor(AppTheme.Color.stone400)
                                 .tracking(1)
                             
-                            InputField(title: "PRICE PER DAY", placeholder: "$ 0.00", text: $viewModel.pricePerDay)
+                            InputField(title: "PRICE PER DAY", placeholder: "₹ 0.00", text: $viewModel.pricePerDay)
                             InputField(title: "CITY", placeholder: "e.g. Mumbai", text: $viewModel.city)
                             
                             ToggleRow(icon: "smoke.fill", title: "No smoking", isOn: .constant(true))
@@ -121,9 +156,13 @@ struct AddCarView: View {
                     
                     Button(action: {
                         Task {
-                            if await viewModel.addNewCar() {
-                                dismiss()
+                            let success: Bool
+                            if let carId = viewModel.editingCarId {
+                                success = await viewModel.updateCar(carId: carId)
+                            } else {
+                                success = await viewModel.addNewCar()
                             }
+                            if success { dismiss() }
                         }
                     }) {
                         HStack {
@@ -227,5 +266,5 @@ struct ToggleRow: View {
 }
 
 #Preview {
-    AddCarView()
+    AddCarView(viewModel: HostViewModel())
 }

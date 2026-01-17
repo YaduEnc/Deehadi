@@ -1,12 +1,21 @@
 import SwiftUI
+import Auth
 
 struct CarDetailView: View {
     @Environment(\.dismiss) var dismiss
+    @StateObject private var viewModel = CarDetailViewModel()
+    @EnvironmentObject var session: UserSession
+    
     let car: Car
+    
+    var isOwner: Bool {
+        session.session?.user.id == car.owner_id
+    }
     
     // State for booking date (placeholder for now)
     @State private var bookingStart = Date()
     @State private var bookingEnd = Calendar.current.date(byAdding: .day, value: 3, to: Date())!
+    @State private var showEditSheet = false
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -24,14 +33,21 @@ struct CarDetailView: View {
                         // Specifications
                         specificationsSection
                         
+                        // Features
+                        if let features = car.features, !features.isEmpty {
+                            featuresSection(features: features)
+                        }
+                        
                         // Host Info
                         hostInfoSection
                         
-                        // Booking Dates
-                        bookingDetailsSection
-                        
-                        // Pricing
-                        pricingSection
+                        if !isOwner {
+                            // Booking Dates
+                            bookingDetailsSection
+                            
+                            // Pricing
+                            pricingSection
+                        }
                         
                         // Bottom Pad for Button
                         Spacer(minLength: 100)
@@ -46,6 +62,18 @@ struct CarDetailView: View {
             bottomFixedButton
         }
         .navigationBarHidden(true)
+        .onAppear {
+            Task {
+                await viewModel.fetchOwnerProfile(ownerId: car.owner_id)
+            }
+        }
+        .sheet(isPresented: $showEditSheet) {
+            let editVM = HostViewModel()
+            AddCarView(viewModel: editVM)
+                .onAppear {
+                    editVM.prepareForEdit(car: car)
+                }
+        }
     }
     
     // MARK: - Components
@@ -100,8 +128,11 @@ struct CarDetailView: View {
                 
                 HStack(spacing: 4) {
                     Image(systemName: "star.fill").foregroundColor(.orange).font(.system(size: 14))
-                    Text(String(format: "%.1f", car.rating)).font(AppTheme.Font.display(size: 16, weight: .bold))
-                    Text("(\(car.tripsCount))").font(AppTheme.Font.display(size: 14)).foregroundColor(AppTheme.Color.stone400)
+                    Text(car.rating > 0 ? String(format: "%.1f", car.rating) : "New")
+                        .font(AppTheme.Font.display(size: 16, weight: .bold))
+                    Text("(\(car.tripsCount))")
+                        .font(AppTheme.Font.display(size: 14))
+                        .foregroundColor(AppTheme.Color.stone400)
                 }
             }
             
@@ -136,6 +167,37 @@ struct CarDetailView: View {
         }
     }
     
+    private func featuresSection(features: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("FEATURES")
+                .font(AppTheme.Font.display(size: 12, weight: .bold))
+                .foregroundColor(AppTheme.Color.stone400)
+                .tracking(1)
+            
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                ForEach(features, id: \.self) { feature in
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(AppTheme.Color.primary)
+                        Text(feature)
+                            .font(AppTheme.Font.display(size: 14))
+                            .foregroundColor(AppTheme.Color.textPrimary)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(Color.white)
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(AppTheme.Color.stone100, lineWidth: 1)
+                    )
+                }
+            }
+        }
+    }
+    
     private var hostInfoSection: some View {
         HStack(spacing: 16) {
             ZStack(alignment: .bottomTrailing) {
@@ -154,7 +216,7 @@ struct CarDetailView: View {
                 Text("OWNED BY")
                     .font(AppTheme.Font.display(size: 10, weight: .bold))
                     .foregroundColor(AppTheme.Color.stone400)
-                Text("Marcus Richardson") // Placeholder name
+                Text(viewModel.ownerProfile?.full_name ?? "Loading...")
                     .font(AppTheme.Font.display(size: 16, weight: .bold))
             }
             
@@ -163,9 +225,9 @@ struct CarDetailView: View {
             VStack(alignment: .trailing, spacing: 2) {
                 HStack(spacing: 4) {
                     Image(systemName: "star.fill").foregroundColor(.orange).font(.system(size: 12))
-                    Text("4.8").font(AppTheme.Font.display(size: 14, weight: .bold))
+                    Text(viewModel.ownerProfile != nil ? "5.0" : "-").font(AppTheme.Font.display(size: 14, weight: .bold))
                 }
-                Text("10m response")
+                Text("Instant reply")
                     .font(AppTheme.Font.display(size: 12))
                     .foregroundColor(AppTheme.Color.stone400)
             }
@@ -177,27 +239,23 @@ struct CarDetailView: View {
     }
     
     private var bookingDetailsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        let numberOfDays = Calendar.current.dateComponents([.day], from: bookingStart, to: bookingEnd).day ?? 1
+        return VStack(alignment: .leading, spacing: 16) {
             Text("BOOKING DETAILS")
                 .font(AppTheme.Font.display(size: 12, weight: .bold))
                 .foregroundColor(AppTheme.Color.stone400)
                 .tracking(1)
             
             HStack {
-                HStack {
-                    Image(systemName: "calendar")
-                        .foregroundColor(AppTheme.Color.primary)
-                    Text("Jun 14 - Jun 17")
-                        .font(AppTheme.Font.display(size: 16, weight: .bold))
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(Color.white)
-                .cornerRadius(16)
+                DatePicker("", selection: $bookingStart, displayedComponents: .date)
+                    .labelsHidden()
+                Text("-")
+                DatePicker("", selection: $bookingEnd, displayedComponents: .date)
+                    .labelsHidden()
                 
                 Spacer()
                 
-                Text("3 days")
+                Text("\(numberOfDays) days")
                     .font(AppTheme.Font.display(size: 14, weight: .bold))
                     .foregroundColor(AppTheme.Color.stone500)
                     .padding(.horizontal, 16)
@@ -209,14 +267,17 @@ struct CarDetailView: View {
     }
     
     private var pricingSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        let numberOfDays = max(1, Calendar.current.dateComponents([.day], from: bookingStart, to: bookingEnd).day ?? 1)
+        let totalRental = car.pricePerDay * numberOfDays
+        
+        return VStack(alignment: .leading, spacing: 16) {
             Text("PRICING")
                 .font(AppTheme.Font.display(size: 12, weight: .bold))
                 .foregroundColor(AppTheme.Color.stone400)
                 .tracking(1)
             
             VStack(spacing: 12) {
-                pricingRow(title: "Daily Rate ($\(car.pricePerDay) x 3)", value: "$\(car.pricePerDay * 3).00")
+                pricingRow(title: "Daily Rate (₹\(car.pricePerDay) x \(numberOfDays))", value: "₹\(totalRental).00")
                 
                 HStack {
                     Text("Insurance")
@@ -230,12 +291,12 @@ struct CarDetailView: View {
                         .background(Color(hex: "2E7D32"))
                         .cornerRadius(4)
                     Spacer()
-                    Text("$0.00")
+                    Text("₹0.00")
                         .font(AppTheme.Font.display(size: 14, weight: .bold))
                         .foregroundColor(Color(hex: "2E7D32"))
                 }
                 
-                pricingRow(title: "Security Deposit (Refundable)", value: "$500.00")
+                pricingRow(title: "Security Deposit (Refundable)", value: "₹500.00")
                 
                 Divider()
                 
@@ -244,7 +305,7 @@ struct CarDetailView: View {
                         Text("TOTAL AMOUNT")
                             .font(AppTheme.Font.display(size: 10, weight: .bold))
                             .foregroundColor(AppTheme.Color.stone400)
-                        Text("$\(car.pricePerDay * 3 + 500).00")
+                        Text("₹\(totalRental + 500).00")
                             .font(AppTheme.Font.display(size: 24, weight: .bold))
                     }
                     Spacer()
@@ -269,24 +330,60 @@ struct CarDetailView: View {
     }
     
     private var bottomFixedButton: some View {
-        VStack {
-            Button(action: {
-                // Action: Start Booking Flow / KYC
-            }) {
-                Text("Book now")
-                    .font(AppTheme.Font.display(size: 18, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 64)
-                    .background(Color(hex: "2D2D2D")) // Dark button color from screenshot
-                    .cornerRadius(22)
+        Group {
+            if isOwner {
+                VStack {
+                    HStack(spacing: 16) {
+                        Button(action: {
+                            // Create a temporary VM for editing just like in HostDashboard
+                            // For simplicity, we can use a callback or just initialize the sheet's VM
+                            showEditSheet = true
+                        }) {
+                            Text("Edit listing")
+                                .font(AppTheme.Font.display(size: 16, weight: .bold))
+                                .foregroundColor(.black)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 56)
+                                .background(AppTheme.Color.stone100)
+                                .cornerRadius(18)
+                        }
+                        
+                        Button(action: {
+                            // Action: Share
+                        }) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 56, height: 56)
+                                .background(Color(hex: "2D2D2D"))
+                                .cornerRadius(18)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 24)
+                    .padding(.top, 16)
+                }
+                .background(Color.white)
+                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: -5)
+            } else {
+                VStack {
+                    NavigationLink(destination: BookingSummaryView(car: car, startDate: bookingStart, endDate: bookingEnd)) {
+                        Text("Book now")
+                            .font(AppTheme.Font.display(size: 18, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 64)
+                            .background(Color(hex: "2D2D2D"))
+                            .cornerRadius(22)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 24)
+                    .padding(.top, 16)
+                }
+                .background(Color.white)
+                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: -5)
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 24)
-            .padding(.top, 16)
         }
-        .background(Color.white)
-        .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: -5)
     }
 }
 
@@ -329,6 +426,9 @@ struct SpecCard: View {
         pickup_lat: 0,
         pickup_lng: 0,
         status: "active",
-        created_at: Date()
+        features: ["Air Conditioning", "Bluetooth", "Music System"],
+        created_at: Date(),
+        pricing_plans: [PricingPlan(price_per_day: 5000, currency: "INR")],
+        car_media: nil
     ))
 }
